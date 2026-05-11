@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('대시보드 - LogTracker')}"></head>
+<body class="bg-light">
+<main class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">프로젝트 대시보드</h1>
+    </div>
+
+    <section class="card shadow-sm mb-4">
+        <div class="card-header">프로젝트 생성</div>
+        <div class="card-body">
+            <form id="projectCreateForm" class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label" for="projectName">프로젝트명</label>
+                    <input id="projectName" name="name" type="text" class="form-control" maxlength="100" required>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" type="submit">저장</button>
+                </div>
+            </form>
+            <p id="projectCreateMessage" class="text-muted small mt-2 mb-0"></p>
+        </div>
+    </section>
+
+    <section class="card shadow-sm">
+        <div class="card-header">프로젝트 목록</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>프로젝트명</th>
+                    <th>생성 시각</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(projects)}">
+                    <td colspan="4" class="text-center text-muted">아직 생성된 프로젝트가 없습니다.</td>
+                </tr>
+                <tr th:each="project : ${projects}">
+                    <td th:text="${project.id}">1</td>
+                    <td th:text="${project.name}">project-a</td>
+                    <td th:text="${#temporals.format(project.createdAt, 'yyyy-MM-dd HH:mm')}">2026-05-10 12:00</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center"
+                           th:href="@{/projects/{id}(id=${project.id})}">열기</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script>
+    const projectCreateForm = document.getElementById('projectCreateForm');
+    const projectCreateMessage = document.getElementById('projectCreateMessage');
+
+    projectCreateForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('projectName').value.trim();
+        if (!name) {
+            projectCreateMessage.textContent = '프로젝트명을 입력해 주세요.';
+            return;
+        }
+
+        const response = await fetch('/api/projects', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name})
+        });
+
+        if (response.ok) {
+            window.location.reload();
+            return;
+        }
+        projectCreateMessage.textContent = '프로젝트 생성에 실패했습니다.';
+    });
+</script>
+</body>
+</html>

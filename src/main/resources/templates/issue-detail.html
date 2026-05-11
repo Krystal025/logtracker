@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('이슈 상세 - LogTracker')}"></head>
+<body class="bg-light">
+<style>
+    .issue-status-toggle {
+        border-width: 1px;
+        font-weight: 600;
+        min-width: 72px;
+    }
+
+    .issue-status-toggle.unresolved {
+        border-color: #8f1d1d;
+        color: #8f1d1d;
+    }
+
+    .issue-status-toggle.unresolved.active {
+        background-color: #8f1d1d;
+        color: #fff;
+    }
+
+    .issue-status-toggle.resolved {
+        border-color: #198754;
+        color: #198754;
+    }
+
+    .issue-status-toggle.resolved.active {
+        background-color: #198754;
+        color: #fff;
+    }
+
+    .section-label {
+        display: block;
+        margin-bottom: .45rem;
+        color: #343a40;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .detail-block {
+        margin-bottom: 1.85rem;
+    }
+
+    .detail-block:last-child {
+        margin-bottom: 0;
+    }
+
+    .log-read-box {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: .375rem;
+        padding: 1rem;
+        color: #212529;
+    }
+
+    .plain-nav-link {
+        color: #495057;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .plain-nav-link:hover {
+        color: #0d6efd;
+        text-decoration: none;
+    }
+</style>
+<main class="container py-5">
+    <div class="mx-auto" style="max-width: 1040px;">
+        <div class="d-flex justify-content-between align-items-start mb-5">
+            <div>
+                <h1 id="issueTitleHeading" class="h3 mb-4" th:text="${issue.title}">이슈 제목</h1>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="이슈 상태">
+                        <button id="statusUnresolvedBtn"
+                                type="button"
+                                class="btn issue-status-toggle unresolved"
+                                th:classappend="${issue.status.name() == 'UNRESOLVED'} ? ' active' : ''"
+                                th:data-issue-id="${issue.id}"
+                                onclick="updateIssueStatus(this.dataset.issueId, 'UNRESOLVED')">
+                            미해결
+                        </button>
+                        <button id="statusResolvedBtn"
+                                type="button"
+                                class="btn issue-status-toggle resolved"
+                                th:classappend="${issue.status.name() == 'RESOLVED'} ? ' active' : ''"
+                                th:data-issue-id="${issue.id}"
+                                onclick="updateIssueStatus(this.dataset.issueId, 'RESOLVED')">
+                            해결
+                        </button>
+                    </div>
+                    <span class="text-muted small"
+                          th:text="${#temporals.format(issue.createdAt, 'yyyy-MM-dd HH:mm')}">2026-05-10 14:00</span>
+                </div>
+            </div>
+            <a class="plain-nav-link" th:href="@{/projects/{id}(id=${issue.projectId})}">&larr; 프로젝트</a>
+        </div>
+
+        <div class="row g-4">
+        <section class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>이슈 정보</span>
+                    <button id="editToggleButton" class="btn btn-sm btn-outline-primary" type="button" onclick="enableIssueEdit()">수정하기</button>
+                </div>
+                <div class="card-body">
+                    <div id="issueReadView">
+                        <div class="detail-block">
+                            <span class="section-label">원본 로그</span>
+                            <pre id="issueRawLogText" class="log-read-box mb-0 small font-monospace" style="white-space: pre-wrap;" th:text="${issue.rawLog}">log content</pre>
+                        </div>
+                    </div>
+                    <form id="issueEditForm" class="d-none">
+                        <div class="detail-block">
+                            <label class="section-label" for="editTitle">이슈 제목</label>
+                            <input id="editTitle" class="form-control" maxlength="1000" th:value="${issue.title}" required>
+                        </div>
+                        <div class="detail-block">
+                            <label class="section-label" for="editRawLog">원본 로그</label>
+                            <textarea id="editRawLog" class="form-control font-monospace small" rows="9" required
+                                      th:text="${issue.rawLog}">log content</textarea>
+                        </div>
+                        <div class="d-flex align-items-end gap-2">
+                            <button class="btn btn-primary" type="submit">저장</button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="cancelIssueEdit()">취소</button>
+                            <span id="issueEditMessage" class="text-muted small ms-3 mb-1"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>AI 분석 결과</span>
+                    <div class="d-flex align-items-center gap-3">
+                        <span id="analysisMessage" class="text-muted small d-none">
+                            <span class="spinner-border spinner-border-sm me-1 d-none" aria-hidden="true"></span>
+                            <span id="analysisMessageText"></span>
+                        </span>
+                        <button id="issueAnalyzeButton"
+                                type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                onclick="analyzeCurrentIssue()"
+                                th:text="${issue.analysis == null ? '분석하기' : '다시 분석'}">분석하기</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="detail-block">
+                        <span class="section-label">추정 원인</span>
+                        <p id="analysisRootCause" class="mb-0"
+                           th:text="${issue.analysis != null ? issue.analysis.rootCause : '-'}">-</p>
+                    </div>
+                    <div class="detail-block">
+                        <span class="section-label">권장 조치</span>
+                        <p id="analysisRecommendation" class="mb-0"
+                           th:text="${issue.analysis != null ? issue.analysis.recommendation : '-'}">-</p>
+                    </div>
+                    <div class="detail-block">
+                        <span class="section-label">요약</span>
+                        <p id="analysisSummary" class="mb-0"
+                           th:text="${issue.analysis != null ? issue.analysis.summary : '-'}">-</p>
+                    </div>
+                    <div class="detail-block">
+                        <span class="section-label">유사 이슈</span>
+                        <p id="similarIssues" class="mb-0 text-muted">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>최종 해결 내용</span>
+                    <button id="resolutionEditButton"
+                            class="btn btn-sm btn-outline-primary"
+                            type="button"
+                            th:classappend="${issue.resolution == null} ? ' d-none' : ''"
+                            onclick="enableResolutionEdit()">수정하기</button>
+                </div>
+                <div class="card-body">
+                    <div id="resolutionReadView" th:classappend="${issue.resolution == null} ? ' d-none' : ''">
+                        <div class="detail-block">
+                            <span class="section-label">원인</span>
+                            <p id="resolutionActualCauseText" class="mb-0"
+                               th:text="${issue.resolution != null ? issue.resolution.actualCause : ''}">원인</p>
+                        </div>
+                        <div class="detail-block">
+                            <span class="section-label">조치 내용</span>
+                            <p id="resolutionActionTakenText" class="mb-0"
+                               th:text="${issue.resolution != null ? issue.resolution.actionTaken : ''}">조치 내용</p>
+                        </div>
+                    </div>
+                    <form id="resolutionForm" class="row g-3" th:classappend="${issue.resolution != null} ? ' d-none' : ''">
+                        <div class="col-12">
+                            <label class="section-label" for="actualCause">원인</label>
+                            <input id="actualCause" class="form-control" maxlength="1000"
+                                   th:value="${issue.resolution != null ? issue.resolution.actualCause : ''}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="section-label" for="actionTaken">조치 내용</label>
+                            <textarea id="actionTaken" class="form-control" rows="4" required
+                                      th:text="${issue.resolution != null ? issue.resolution.actionTaken : ''}"></textarea>
+                        </div>
+                        <div class="col-12 d-flex align-items-end gap-2">
+                            <button class="btn btn-primary" type="submit">해결 내용 저장</button>
+                            <button id="resolutionCancelButton"
+                                    class="btn btn-outline-secondary"
+                                    type="button"
+                                    th:classappend="${issue.resolution == null} ? ' d-none' : ''"
+                                    onclick="cancelResolutionEdit()">취소</button>
+                            <span id="resolutionMessage" class="text-muted small ms-3 mb-1"></span>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+        </div>
+    </div>
+</main>
+<script th:inline="javascript">
+    const issueId = [[${issue.id}]];
+    const currentStatus = /*[[${issue.status.name()}]]*/ 'UNRESOLVED';
+    const issueReadView = document.getElementById('issueReadView');
+    const issueEditForm = document.getElementById('issueEditForm');
+    const editTitle = document.getElementById('editTitle');
+    const editRawLog = document.getElementById('editRawLog');
+    const issueEditMessage = document.getElementById('issueEditMessage');
+    const analysisMessage = document.getElementById('analysisMessage');
+    const analysisMessageText = document.getElementById('analysisMessageText');
+    const analysisSpinner = analysisMessage.querySelector('.spinner-border');
+    const resolutionForm = document.getElementById('resolutionForm');
+    const resolutionReadView = document.getElementById('resolutionReadView');
+    const resolutionEditButton = document.getElementById('resolutionEditButton');
+    const resolutionCancelButton = document.getElementById('resolutionCancelButton');
+    const resolutionMessage = document.getElementById('resolutionMessage');
+    const actualCauseInput = document.getElementById('actualCause');
+    const actionTakenInput = document.getElementById('actionTaken');
+
+    async function updateIssueStatus(issueId, status) {
+        if (status === currentStatus) {
+            return;
+        }
+
+        const response = await fetch(`/api/issues/${issueId}/status`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status})
+        });
+
+        if (response.ok) {
+            window.location.reload();
+            return;
+        }
+        alert('상태 변경에 실패했습니다.');
+    }
+
+    async function analyzeCurrentIssue() {
+        const button = document.getElementById('issueAnalyzeButton');
+        button.disabled = true;
+        showAnalysisMessage('분석 중입니다.', true, false);
+
+        const response = await fetch(`/api/analysis/issues/${issueId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+
+        if (!response.ok) {
+            button.disabled = false;
+            showAnalysisMessage('분석에 실패했습니다.', false, true);
+            return;
+        }
+
+        const issue = await response.json();
+        document.getElementById('analysisRootCause').textContent = issue.analysis?.rootCause || '-';
+        document.getElementById('analysisRecommendation').textContent = issue.analysis?.recommendation || '-';
+        document.getElementById('analysisSummary').textContent = issue.analysis?.summary || '-';
+        document.getElementById('similarIssues').textContent = '-';
+        button.textContent = '다시 분석';
+        button.disabled = false;
+        showAnalysisMessage('분석이 완료되었습니다.', false, true);
+    }
+
+    function showAnalysisMessage(message, loading, autoHide) {
+        analysisMessage.classList.remove('d-none');
+        analysisSpinner.classList.toggle('d-none', !loading);
+        analysisMessageText.textContent = message;
+        if (autoHide) {
+            setTimeout(() => {
+                analysisMessage.classList.add('d-none');
+                analysisSpinner.classList.add('d-none');
+                analysisMessageText.textContent = '';
+            }, 2200);
+        }
+    }
+
+    function enableIssueEdit() {
+        issueReadView.classList.add('d-none');
+        issueEditForm.classList.remove('d-none');
+        document.getElementById('editToggleButton').classList.add('d-none');
+        issueEditMessage.textContent = '';
+    }
+
+    function cancelIssueEdit() {
+        editTitle.value = document.getElementById('issueTitleHeading').textContent.trim();
+        editRawLog.value = document.getElementById('issueRawLogText').textContent.trim();
+        issueEditForm.classList.add('d-none');
+        issueReadView.classList.remove('d-none');
+        document.getElementById('editToggleButton').classList.remove('d-none');
+        issueEditMessage.textContent = '';
+    }
+
+    function showEditMessage(message, afterHide) {
+        issueEditMessage.textContent = message;
+        setTimeout(() => {
+            issueEditMessage.textContent = '';
+            if (afterHide) {
+                afterHide();
+            }
+        }, 2200);
+    }
+
+    issueEditForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('editTitle').value.trim();
+        const rawLog = document.getElementById('editRawLog').value.trim();
+
+        if (!title || !rawLog) {
+            showEditMessage('이슈 제목과 원본 로그를 입력해 주세요.');
+            return;
+        }
+
+        const response = await fetch(`/api/issues/${issueId}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title, rawLog})
+        });
+
+        if (!response.ok) {
+            showEditMessage('저장에 실패했습니다.');
+            return;
+        }
+
+        const issue = await response.json();
+        document.getElementById('issueTitleHeading').textContent = issue.title;
+        document.getElementById('issueRawLogText').textContent = issue.rawLog;
+        showEditMessage('저장되었습니다.', () => {
+            issueEditForm.classList.add('d-none');
+            issueReadView.classList.remove('d-none');
+            document.getElementById('editToggleButton').classList.remove('d-none');
+        });
+    });
+
+    function enableResolutionEdit() {
+        resolutionReadView.classList.add('d-none');
+        resolutionForm.classList.remove('d-none');
+        resolutionEditButton.classList.add('d-none');
+        resolutionCancelButton.classList.remove('d-none');
+        resolutionMessage.textContent = '';
+    }
+
+    function cancelResolutionEdit() {
+        actualCauseInput.value = document.getElementById('resolutionActualCauseText').textContent.trim();
+        actionTakenInput.value = document.getElementById('resolutionActionTakenText').textContent.trim();
+        resolutionForm.classList.add('d-none');
+        resolutionReadView.classList.remove('d-none');
+        resolutionEditButton.classList.remove('d-none');
+        resolutionMessage.textContent = '';
+    }
+
+    function showResolutionMessage(message, afterHide) {
+        resolutionMessage.textContent = message;
+        setTimeout(() => {
+            resolutionMessage.textContent = '';
+            if (afterHide) {
+                afterHide();
+            }
+        }, 2200);
+    }
+
+    resolutionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const actualCause = document.getElementById('actualCause').value.trim();
+        const actionTaken = document.getElementById('actionTaken').value.trim();
+
+        if (!actualCause || !actionTaken) {
+            showResolutionMessage('실제 원인과 조치 내용을 입력해 주세요.');
+            return;
+        }
+
+        const response = await fetch(`/api/issues/${issueId}/resolution`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({actualCause, actionTaken})
+        });
+
+        if (response.ok) {
+            const issue = await response.json();
+            document.getElementById('resolutionActualCauseText').textContent = issue.resolution?.actualCause || actualCause;
+            document.getElementById('resolutionActionTakenText').textContent = issue.resolution?.actionTaken || actionTaken;
+            showResolutionMessage('저장되었습니다.', () => {
+                resolutionForm.classList.add('d-none');
+                resolutionReadView.classList.remove('d-none');
+                resolutionEditButton.classList.remove('d-none');
+                resolutionCancelButton.classList.remove('d-none');
+            });
+            return;
+        }
+        showResolutionMessage('저장에 실패했습니다.');
+    });
+</script>
+</body>
+</html>

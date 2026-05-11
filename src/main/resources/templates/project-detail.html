@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('프로젝트 상세 - LogTracker')}"></head>
+<body class="bg-light">
+<style>
+    .section-label {
+        display: block;
+        margin-bottom: .45rem;
+        color: #343a40;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .analysis-block {
+        margin-bottom: 1.85rem;
+    }
+
+    .analysis-block:last-child {
+        margin-bottom: 0;
+    }
+
+    .status-badge {
+        border: 1px solid;
+        background: #fff;
+        font-weight: 700;
+    }
+
+    .status-badge.unresolved {
+        border-color: #8f1d1d;
+        color: #8f1d1d;
+    }
+
+    .status-badge.resolved {
+        border-color: #198754;
+        color: #198754;
+    }
+
+    .plain-nav-link {
+        color: #495057;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .plain-nav-link:hover {
+        color: #0d6efd;
+        text-decoration: none;
+    }
+</style>
+<main class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1" th:text="${project.name}">Project Name</h1>
+        </div>
+        <a class="plain-nav-link" href="/projects">&larr; 프로젝트 목록</a>
+    </div>
+
+    <div class="row g-4">
+        <section class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header">로그 분석</div>
+                <div class="card-body">
+                    <form id="issueCreateForm" class="row g-3">
+                        <input type="hidden" id="projectId" th:value="${project.id}">
+
+                        <div class="col-12">
+                            <label class="form-label" for="logInput">원본 로그</label>
+                            <textarea id="logInput" class="form-control" rows="8" required></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label" for="titleInput">이슈 제목</label>
+                            <input id="titleInput" class="form-control" maxlength="1000"
+                                   placeholder="예: 결제 승인 요청 중 응답 지연 발생" required>
+                        </div>
+
+                        <div class="col-12 d-flex align-items-center gap-2">
+                            <button class="btn btn-primary" type="submit">이슈 저장</button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="analyzeLog()">분석하기</button>
+                            <span id="analysisStatus" class="text-muted small ms-3 d-none">
+                                <span class="spinner-border spinner-border-sm me-1 d-none" aria-hidden="true"></span>
+                                <span id="analysisStatusText"></span>
+                            </span>
+                        </div>
+                    </form>
+                    <p id="issueCreateMessage" class="text-muted small mt-2 mb-0"></p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header">AI 분석 결과</div>
+                <div class="card-body">
+                    <div class="analysis-block">
+                        <span class="section-label">추정 원인</span>
+                        <p id="analysisCause" class="mb-0 text-muted">-</p>
+                    </div>
+                    <div class="analysis-block">
+                        <span class="section-label">권장 조치</span>
+                        <p id="analysisAction" class="mb-0 text-muted">-</p>
+                    </div>
+                    <div class="analysis-block">
+                        <span class="section-label">요약</span>
+                        <p id="analysisSummary" class="mb-0 text-muted">-</p>
+                    </div>
+                    <div class="analysis-block">
+                        <span class="section-label">유사 이슈</span>
+                        <p id="analysisSimilar" class="mb-0 text-muted">-</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>최근 이슈</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="unresolvedOnlySwitch"
+                                   name="unresolvedOnly" value="true"
+                                   th:checked="${unresolvedOnly}">
+                            <label class="form-check-label small" for="unresolvedOnlySwitch">미해결만</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="issueList" class="list-group list-group-flush">
+                    <div id="emptyIssueMessage" th:if="${#lists.isEmpty(issues)}" class="list-group-item text-muted">
+                        조건에 맞는 이슈가 없습니다.
+                    </div>
+                    <div th:each="issue : ${issues}" class="list-group-item issue-list-item">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <a th:href="@{/issues/{id}(id=${issue.id})}" class="text-decoration-none fw-semibold text-dark"
+                               th:text="${issue.title}">Issue title</a>
+                            <span class="badge status-badge d-inline-flex align-items-center justify-content-center px-2 py-1 lh-sm"
+                                  th:classappend="${issue.status.name() == 'RESOLVED'} ? ' resolved' : ' unresolved'"
+                                  th:text="${issue.status.name() == 'RESOLVED' ? '해결' : '미해결'}">미해결</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted"
+                                   th:text="${#temporals.format(issue.createdAt, 'yyyy-MM-dd HH:mm')}">2026-05-10 13:00</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+    let currentAnalysisResult = null;
+    const projectId = Number(document.getElementById('projectId').value);
+    const unresolvedOnlySwitch = document.getElementById('unresolvedOnlySwitch');
+    const issueList = document.getElementById('issueList');
+    const analysisStatus = document.getElementById('analysisStatus');
+    const analysisStatusText = document.getElementById('analysisStatusText');
+    const analysisSpinner = analysisStatus.querySelector('.spinner-border');
+
+    async function analyzeLog() {
+        const log = document.getElementById('logInput').value.trim();
+        if (!log) {
+            showAnalysisStatus('먼저 로그를 입력해 주세요.', false, true);
+            return;
+        }
+
+        showAnalysisStatus('분석 중입니다.', true, false);
+        const response = await fetch('/api/analysis', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({rawLog: log})
+        });
+
+        if (!response.ok) {
+            showAnalysisStatus('로그 분석에 실패했습니다.', false, true);
+            return;
+        }
+
+        currentAnalysisResult = await response.json();
+        document.getElementById('analysisSummary').textContent = currentAnalysisResult.summary || '-';
+        document.getElementById('analysisCause').textContent = currentAnalysisResult.rootCause || '-';
+        document.getElementById('analysisAction').textContent = currentAnalysisResult.recommendation || '-';
+        document.getElementById('analysisSimilar').textContent = '-';
+        showAnalysisStatus('분석이 완료되었습니다.', false, true);
+    }
+
+    const issueCreateForm = document.getElementById('issueCreateForm');
+    const issueCreateMessage = document.getElementById('issueCreateMessage');
+
+    function showAnalysisStatus(message, loading, autoHide) {
+        analysisStatus.classList.remove('d-none');
+        analysisSpinner.classList.toggle('d-none', !loading);
+        analysisStatusText.textContent = message;
+        if (autoHide) {
+            setTimeout(() => {
+                analysisStatus.classList.add('d-none');
+                analysisStatusText.textContent = '';
+                analysisSpinner.classList.add('d-none');
+            }, 2200);
+        }
+    }
+
+    unresolvedOnlySwitch.addEventListener('change', loadIssues);
+
+    async function loadIssues() {
+        const unresolvedOnly = unresolvedOnlySwitch.checked;
+        const response = await fetch(`/api/issues?projectId=${projectId}&unresolvedOnly=${unresolvedOnly}`);
+        if (!response.ok) {
+            return;
+        }
+
+        const issues = await response.json();
+        renderIssues(issues);
+    }
+
+    function renderIssues(issues) {
+        issueList.innerHTML = '';
+        if (issues.length === 0) {
+            const emptyItem = document.createElement('div');
+            emptyItem.className = 'list-group-item text-muted';
+            emptyItem.textContent = '조건에 맞는 이슈가 없습니다.';
+            issueList.appendChild(emptyItem);
+            return;
+        }
+
+        issues.forEach((issue) => {
+            const item = document.createElement('div');
+            item.className = 'list-group-item issue-list-item';
+
+            const topRow = document.createElement('div');
+            topRow.className = 'd-flex justify-content-between align-items-start gap-2';
+
+            const link = document.createElement('a');
+            link.className = 'text-decoration-none fw-semibold text-dark';
+            link.href = `/issues/${issue.id}`;
+            link.textContent = issue.title;
+
+            const badge = document.createElement('span');
+            const resolved = issue.status === 'RESOLVED';
+            badge.className = `badge status-badge d-inline-flex align-items-center justify-content-center px-2 py-1 lh-sm ${resolved ? 'resolved' : 'unresolved'}`;
+            badge.textContent = resolved ? '해결' : '미해결';
+
+            topRow.append(link, badge);
+
+            const bottomRow = document.createElement('div');
+            bottomRow.className = 'd-flex justify-content-between align-items-center mt-2';
+
+            const createdAt = document.createElement('small');
+            createdAt.className = 'text-muted';
+            createdAt.textContent = formatDateTime(issue.createdAt);
+            bottomRow.appendChild(createdAt);
+
+            item.append(topRow, bottomRow);
+            issueList.appendChild(item);
+        });
+    }
+
+    function formatDateTime(value) {
+        if (!value) {
+            return '';
+        }
+        return value.replace('T', ' ').slice(0, 16);
+    }
+
+    issueCreateForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const rawLog = document.getElementById('logInput').value.trim();
+        const title = document.getElementById('titleInput').value.trim();
+
+        if (!rawLog || !title) {
+            issueCreateMessage.textContent = '원본 로그와 이슈 제목을 입력해 주세요.';
+            return;
+        }
+
+        const response = await fetch('/api/issues', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({projectId, rawLog, title, analysis: currentAnalysisResult})
+        });
+
+        if (response.ok) {
+            window.location.reload();
+            return;
+        }
+        issueCreateMessage.textContent = '이슈 저장에 실패했습니다.';
+    });
+</script>
+</body>
+</html>
