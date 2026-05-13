@@ -1,58 +1,149 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('대시보드 - LogTracker')}"></head>
+<head th:replace="~{layout :: head('Dashboard - LogTracker')}"></head>
 <body class="bg-light">
-<main class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0">프로젝트 대시보드</h1>
+<div class="app-shell">
+    <aside class="app-sidebar">
+        <div class="brand-mark">
+            <div class="brand-icon">L</div>
+            <div>
+                <div class="brand-name">LogTracker</div>
+                <div class="brand-caption">AI Observability</div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="sidebar-link active" href="/projects"><span class="sidebar-dot"></span>Dashboard</a>
+            <a class="sidebar-link" href="/projects"><span class="sidebar-dot"></span>Projects</a>
+            <a class="sidebar-link" href="/projects"><span class="sidebar-dot"></span>Log Analysis</a>
+            <a class="sidebar-link" href="/projects"><span class="sidebar-dot"></span>Issues</a>
+        </nav>
+        <div class="sidebar-meta">
+            RAG recommendations and vector search are ready to connect in the next iteration.
+        </div>
+    </aside>
+
+    <div class="app-main">
+        <header class="app-topbar">
+            <div>
+                <div class="page-kicker">Operational Overview</div>
+                <div class="section-title">Workspace health</div>
+            </div>
+            <span class="topbar-pill">AI engine connected</span>
+        </header>
+
+        <main class="app-content fade-in">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Projects</h1>
+                    <p class="page-description mb-0">Track log streams, AI investigations, and resolved incidents by project.</p>
+                </div>
+            </div>
+
+            <div class="metric-grid mb-4">
+                <div class="metric-card">
+                    <div class="metric-value" th:text="${#lists.size(projects)}">0</div>
+                    <div class="metric-label">Active projects</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">AI</div>
+                    <div class="metric-label">Analysis pipeline</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">RAG</div>
+                    <div class="metric-label">Recommendation roadmap</div>
+                </div>
+            </div>
+
+            <div class="content-grid">
+                <section class="glass-card">
+                    <div class="card-head">
+                        <div>
+                            <div class="section-title">Project registry</div>
+                            <div class="text-muted small">Create or open an observability workspace.</div>
+                        </div>
+                    </div>
+                    <div class="card-body-pro">
+                        <form id="projectCreateForm" class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label" for="projectName">Project name</label>
+                                <input id="projectName" name="name" type="text" class="form-control" maxlength="100"
+                                       placeholder="ex. Commerce API" required>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-save w-100" type="submit">Create project</button>
+                            </div>
+                            <p id="projectCreateMessage" class="text-muted small mb-0"></p>
+                        </form>
+
+                        <div class="row g-3">
+                            <div th:if="${#lists.isEmpty(projects)}" class="col-12">
+                                <div class="project-card text-muted">No projects yet. Create one to start collecting issues.</div>
+                            </div>
+                            <div th:each="project : ${projects}" class="col-md-6">
+                                <a class="project-card" th:href="@{/projects/{id}(id=${project.id})}">
+                                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                        <div>
+                                            <div class="section-title" th:text="${project.name}">Commerce API</div>
+                                            <div class="text-muted small">Log analysis workspace</div>
+                                        </div>
+                                        <span class="badge-pro ai">AI-ready</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-muted small">
+                                        <span>Created</span>
+                                        <span th:text="${#temporals.format(project.createdAt, 'yyyy-MM-dd HH:mm')}">2026-05-10 12:00</span>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="d-grid gap-4">
+                    <section class="glass-card">
+                        <div class="card-head">
+                            <div class="section-title">AI summary</div>
+                            <span class="badge-pro ai">Insight</span>
+                        </div>
+                        <div class="card-body-pro">
+                            <div class="insight-block">
+                                <span class="section-label">Current focus</span>
+                                <p class="text-muted mb-0">Analyze production logs, capture resolved incidents, and prepare them for similar-issue retrieval.</p>
+                            </div>
+                            <div class="insight-block">
+                                <span class="section-label">Next signal</span>
+                                <p class="text-muted mb-0">Pinecone-backed recommendations can surface past resolutions once resolution vectors are indexed.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="glass-card">
+                        <div class="card-head">
+                            <div class="section-title">Recent activity</div>
+                        </div>
+                        <div class="card-body-pro">
+                            <div class="timeline">
+                                <div class="timeline-item">Workspace initialized for AI log triage.</div>
+                                <div class="timeline-item">Issue tracker and resolution knowledge base enabled.</div>
+                                <div class="timeline-item">RAG similarity search pending vector integration.</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="glass-card">
+                        <div class="card-head">
+                            <div class="section-title">Severity statistics</div>
+                        </div>
+                        <div class="card-body-pro d-flex gap-2 flex-wrap">
+                            <span class="badge-pro severity-high">High 0</span>
+                            <span class="badge-pro">Medium 0</span>
+                            <span class="badge-pro severity-low">Resolved 0</span>
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </main>
     </div>
-
-    <section class="card shadow-sm mb-4">
-        <div class="card-header">프로젝트 생성</div>
-        <div class="card-body">
-            <form id="projectCreateForm" class="row g-3">
-                <div class="col-md-8">
-                    <label class="form-label" for="projectName">프로젝트명</label>
-                    <input id="projectName" name="name" type="text" class="form-control" maxlength="100" required>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <button class="btn btn-primary w-100" type="submit">저장</button>
-                </div>
-            </form>
-            <p id="projectCreateMessage" class="text-muted small mt-2 mb-0"></p>
-        </div>
-    </section>
-
-    <section class="card shadow-sm">
-        <div class="card-header">프로젝트 목록</div>
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>프로젝트명</th>
-                    <th>생성 시각</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:if="${#lists.isEmpty(projects)}">
-                    <td colspan="4" class="text-center text-muted">아직 생성된 프로젝트가 없습니다.</td>
-                </tr>
-                <tr th:each="project : ${projects}">
-                    <td th:text="${project.id}">1</td>
-                    <td th:text="${project.name}">project-a</td>
-                    <td th:text="${#temporals.format(project.createdAt, 'yyyy-MM-dd HH:mm')}">2026-05-10 12:00</td>
-                    <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center"
-                           th:href="@{/projects/{id}(id=${project.id})}">열기</a>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
-</main>
+</div>
 
 <script>
     const projectCreateForm = document.getElementById('projectCreateForm');

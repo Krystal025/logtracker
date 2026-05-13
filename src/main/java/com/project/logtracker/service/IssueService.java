@@ -7,6 +7,7 @@ import com.project.logtracker.dto.issue.IssueUpdateRequest;
 import com.project.logtracker.entity.Issue;
 import com.project.logtracker.entity.IssueAnalysis;
 import com.project.logtracker.entity.IssueResolution;
+import com.project.logtracker.entity.IssueSeverity;
 import com.project.logtracker.entity.IssueStatus;
 import com.project.logtracker.entity.Project;
 import com.project.logtracker.exception.ResourceNotFoundException;
@@ -118,12 +119,14 @@ public class IssueService {
 
     private void upsertAnalysis(Issue issue, AnalysisResult analysisResult) {
         double confidence = analysisResult.confidence() == null ? 0.0 : analysisResult.confidence();
+        IssueSeverity severity = analysisResult.severity() == null ? IssueSeverity.MEDIUM : analysisResult.severity();
         IssueAnalysis issueAnalysis = issueAnalysisRepository.findByIssueId(issue.getId())
                 .map(existingAnalysis -> {
                     existingAnalysis.update(
                             analysisResult.summary(),
                             analysisResult.rootCause(),
                             analysisResult.recommendation(),
+                            severity,
                             confidence
                     );
                     return existingAnalysis;
@@ -133,6 +136,7 @@ public class IssueService {
                         analysisResult.summary(),
                         analysisResult.rootCause(),
                         analysisResult.recommendation(),
+                        severity,
                         confidence
                 ));
 

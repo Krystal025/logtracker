@@ -3,6 +3,7 @@ package com.project.logtracker.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.logtracker.dto.analysis.AnalysisResult;
+import com.project.logtracker.entity.IssueSeverity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -48,10 +49,15 @@ public class AnalysisService {
             You are a backend log analysis assistant.
 
             Return strictly valid JSON only with these fields:
-            summary, rootCause, recommendation, confidence.
+            summary, rootCause, recommendation, severity, confidence.
 
             Rules:
             - Write summary, rootCause, and recommendation in Korean.
+            - severity must be one of LOW, MEDIUM, HIGH, CRITICAL.
+            - Use CRITICAL for outage, data loss, payment failure, security incident, or repeated production impact.
+            - Use HIGH for severe user-facing errors or persistent backend failures.
+            - Use MEDIUM for degraded performance, intermittent errors, or recoverable failures.
+            - Use LOW for minor warnings, low-risk validation issues, or informational anomalies.
             - Keep technical terms, class names, package names, SQL keywords,
               exception names, server names, and log messages in English as-is.
             - Do not translate code syntax or stack trace content.
@@ -96,11 +102,20 @@ public class AnalysisService {
             String summary = jsonNode.path("summary").asText("");
             String rootCause = jsonNode.path("rootCause").asText("");
             String recommendation = jsonNode.path("recommendation").asText("");
+            IssueSeverity severity = parseSeverity(jsonNode.path("severity").asText("MEDIUM"));
             double confidence = jsonNode.path("confidence").asDouble(0.0);
 
-            return new AnalysisResult(summary, rootCause, recommendation, confidence);
+            return new AnalysisResult(summary, rootCause, recommendation, severity, confidence);
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse analysis result", e);
+        }
+    }
+
+    private IssueSeverity parseSeverity(String severity) {
+        try {
+            return IssueSeverity.valueOf(severity.toUpperCase());
+        } catch (Exception e) {
+            return IssueSeverity.MEDIUM;
         }
     }
 }

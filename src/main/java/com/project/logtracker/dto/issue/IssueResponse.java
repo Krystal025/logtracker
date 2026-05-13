@@ -38,6 +38,7 @@ public record IssueResponse(
                 analysis.getSummary(),
                 analysis.getRootCause(),
                 analysis.getRecommendation(),
+                analysis.getSeverity(),
                 analysis.getConfidence()
         );
     }
