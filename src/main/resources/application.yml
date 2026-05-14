@@ -19,4 +19,9 @@ server:
 
 openai:
   api-key: ${OPENAI_API_KEY}
-  model: gpt-4.1-mini
+  chat-model: gpt-4.1-mini
+  embedding-model: text-embedding-3-small
+
+pinecone:
+  api-key: ${PINECONE_API_KEY}
+  index-name: ${PINECONE_INDEX_NAME:logtracker-issues}

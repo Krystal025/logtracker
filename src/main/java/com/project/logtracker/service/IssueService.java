@@ -16,11 +16,13 @@ import com.project.logtracker.repository.IssueRepository;
 import com.project.logtracker.repository.IssueResolutionRepository;
 import com.project.logtracker.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -30,6 +32,8 @@ public class IssueService {
     private final IssueAnalysisRepository issueAnalysisRepository;
     private final IssueResolutionRepository issueResolutionRepository;
     private final ProjectRepository projectRepository;
+    private final EmbeddingService embeddingService;
+    private final VectorStoreService vectorStoreService;
 
     @Transactional
     public IssueResponse create(IssueCreateRequest request) {
@@ -88,6 +92,11 @@ public class IssueService {
     public IssueResponse updateStatus(Long id, IssueStatus status) {
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + id));
+
+        if (status == IssueStatus.UNRESOLVED) {
+            vectorStoreService.delete(id);
+        }
+
         issue.changeStatus(status);
         return IssueResponse.from(issue);
     }
@@ -104,6 +113,7 @@ public class IssueService {
     public IssueResponse createResolution(Long issueId, String actualCause, String actionTaken) {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
+
         IssueResolution resolution = issueResolutionRepository.findByIssueId(issueId)
                 .map(existingResolution -> {
                     existingResolution.update(actualCause, actionTaken);
@@ -114,12 +124,42 @@ public class IssueService {
         issueResolutionRepository.save(resolution);
         issue.attachResolution(resolution);
         issue.changeStatus(IssueStatus.RESOLVED);
+
+        log.info("[IssueService] resolution 저장 완료, Pinecone upsert 진행 - issueId={}, projectId={}",
+                issueId, issue.getProject().getId());
+
+        String embeddingText = buildEmbeddingText(issue, actualCause, actionTaken);
+        log.info("[IssueService] embeddingText 길이={}", embeddingText.length());
+
+        List<Float> vector = embeddingService.embed(embeddingText);
+        log.info("[IssueService] embedding 완료 - vectorSize={}", vector != null ? vector.size() : 0);
+
+        vectorStoreService.upsert(issueId, issue.getProject().getId(), vector);
+
         return IssueResponse.from(issue);
+    }
+
+    private String buildEmbeddingText(Issue issue, String actualCause, String actionTaken) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(issue.getTitle()).append("\n");
+        sb.append(issue.getRawLog()).append("\n");
+
+        IssueAnalysis analysis = issue.getAnalysis();
+        if (analysis != null) {
+            if (analysis.getSummary() != null) sb.append(analysis.getSummary()).append("\n");
+            if (analysis.getRootCause() != null) sb.append(analysis.getRootCause()).append("\n");
+        }
+
+        if (actualCause != null) sb.append(actualCause).append("\n");
+        if (actionTaken != null) sb.append(actionTaken);
+
+        return sb.toString().trim();
     }
 
     private void upsertAnalysis(Issue issue, AnalysisResult analysisResult) {
         double confidence = analysisResult.confidence() == null ? 0.0 : analysisResult.confidence();
-        IssueSeverity severity = analysisResult.severity() == null ? IssueSeverity.MEDIUM : analysisResult.severity();
+        IssueSeverity severity = analysisResult.severity() == null
+                ? IssueSeverity.MEDIUM : analysisResult.severity();
         IssueAnalysis issueAnalysis = issueAnalysisRepository.findByIssueId(issue.getId())
                 .map(existingAnalysis -> {
                     existingAnalysis.update(

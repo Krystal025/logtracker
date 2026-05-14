@@ -42,7 +42,6 @@
                                 <div class="section-title">Log stream</div>
                                 <div class="text-muted small">Paste a production log or stack trace for AI-assisted triage.</div>
                             </div>
-<!--                            <span class="badge-pro ai">AI pipeline</span>-->
                         </div>
                         <div class="card-body-pro">
                             <form id="issueCreateForm" class="row g-3">
@@ -173,7 +172,7 @@
         const response = await fetch('/api/analysis', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({rawLog: log})
+            body: JSON.stringify({projectId, rawLog: log})
         });
 
         if (!response.ok) {
@@ -188,11 +187,21 @@
         document.getElementById('analysisSummary').textContent = currentAnalysisResult.summary || '-';
         document.getElementById('analysisCause').textContent = currentAnalysisResult.rootCause || '-';
         document.getElementById('analysisAction').textContent = currentAnalysisResult.recommendation || '-';
-        document.getElementById('analysisSimilar').textContent = '-';
+        renderSimilarIssues(document.getElementById('analysisSimilar'), currentAnalysisResult.similarIssues);
         projectAnalyzeButton.disabled = false;
         projectAnalyzeButton.classList.remove('is-analyzing');
         projectAnalyzeButton.textContent = '다시 분석';
         showAnalysisStatus('분석이 완료되었습니다.', false, true);
+    }
+
+    function renderSimilarIssues(container, similarIssues) {
+        if (!similarIssues || similarIssues.length === 0) {
+            container.textContent = '-';
+            return;
+        }
+        container.innerHTML = similarIssues.map(s =>
+            `<a href="/issues/${s.issueId}" class="d-block mb-1">${s.title}</a>`
+        ).join('');
     }
 
     const issueCreateForm = document.getElementById('issueCreateForm');

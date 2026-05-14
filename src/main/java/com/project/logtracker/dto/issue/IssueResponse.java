@@ -34,7 +34,7 @@ public record IssueResponse(
         if (analysis == null) {
             return null;
         }
-        return new AnalysisResult(
+        return AnalysisResult.withoutSimilar(
                 analysis.getSummary(),
                 analysis.getRootCause(),
                 analysis.getRecommendation(),

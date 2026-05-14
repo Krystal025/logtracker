@@ -168,13 +168,10 @@
                     <div class="glass-card">
                         <div class="card-head">
                             <div class="section-title">Similar issues</div>
-                            <span class="badge-pro ai">RAG soon</span>
+                            <span class="badge-pro ai">RAG</span>
                         </div>
                         <div class="card-body-pro">
-                            <div class="insight-block">
-                                <span class="section-label">Recommendation</span>
-                                <p id="similarIssues" class="mb-0 text-muted">Pinecone-backed similar issue retrieval will appear here.</p>
-                            </div>
+                            <p id="similarIssues" class="mb-0 text-muted small">AI 분석 실행 시 유사 이슈가 표시됩니다.</p>
                         </div>
                     </div>
                     <div class="glass-card">
@@ -254,15 +251,30 @@
             return;
         }
 
-        const issue = await response.json();
-        updateSeverityBadge(document.getElementById('analysisSeverity'), issue.analysis?.severity);
-        document.getElementById('analysisRootCause').textContent = issue.analysis?.rootCause || '-';
-        document.getElementById('analysisRecommendation').textContent = issue.analysis?.recommendation || '-';
-        document.getElementById('analysisSummary').textContent = issue.analysis?.summary || '-';
+        const result = await response.json();
+        updateSeverityBadge(document.getElementById('analysisSeverity'), result.severity);
+        document.getElementById('analysisRootCause').textContent = result.rootCause || '-';
+        document.getElementById('analysisRecommendation').textContent = result.recommendation || '-';
+        document.getElementById('analysisSummary').textContent = result.summary || '-';
+        renderSimilarIssues(result.similarIssues);
         button.textContent = '다시 분석';
         button.disabled = false;
         button.classList.remove('is-analyzing');
         showAnalysisMessage('분석이 완료되었습니다.', false, true);
+    }
+
+    function renderSimilarIssues(similarIssues) {
+        const container = document.getElementById('similarIssues');
+        if (!similarIssues || similarIssues.length === 0) {
+            container.innerHTML = '<span class="text-muted small">유사한 과거 이슈가 없습니다.</span>';
+            return;
+        }
+        container.innerHTML = similarIssues.map(s => `
+            <a href="/issues/${s.issueId}" class="d-block mb-2">
+                <div class="section-title">${s.title}</div>
+                ${s.actualCause ? `<div class="text-muted small mt-1">${s.actualCause}</div>` : ''}
+            </a>
+        `).join('');
     }
 
     function showAnalysisMessage(message, loading, autoHide) {

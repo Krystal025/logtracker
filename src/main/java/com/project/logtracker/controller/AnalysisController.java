@@ -2,7 +2,6 @@ package com.project.logtracker.controller;
 
 import com.project.logtracker.dto.analysis.AnalysisRequest;
 import com.project.logtracker.dto.analysis.AnalysisResult;
-import com.project.logtracker.dto.issue.IssueResponse;
 import com.project.logtracker.service.AnalysisService;
 import com.project.logtracker.service.IssueService;
 import jakarta.validation.Valid;
@@ -23,12 +22,14 @@ public class AnalysisController {
 
     @PostMapping
     public AnalysisResult analyze(@Valid @RequestBody AnalysisRequest request) {
-        return analysisService.analyze(request.rawLog());
+        return analysisService.analyze(request.rawLog(), request.projectId());
     }
 
     @PostMapping("/issues/{issueId}")
-    public IssueResponse analyzeIssue(@PathVariable Long issueId) {
-        AnalysisResult analysisResult = analysisService.analyze(issueService.getRawLog(issueId));
-        return issueService.saveAnalysis(issueId, analysisResult);
+    public AnalysisResult analyzeIssue(@PathVariable Long issueId) {
+        var issue = issueService.getById(issueId);
+        AnalysisResult analysisResult = analysisService.analyze(issue.rawLog(), issue.projectId());
+        issueService.saveAnalysis(issueId, analysisResult);
+        return analysisResult;
     }
 }
