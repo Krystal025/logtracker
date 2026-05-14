@@ -2,34 +2,37 @@
 
 ## 1. Project Overview
 
-LogTracker is a system that analyzes logs, helps identify root causes of errors, and stores resolved issues as reusable knowledge.
+LogTracker analyzes logs, helps identify root causes of errors, and stores resolved **issues** as reusable knowledge.
 
 The goal is NOT just log analysis, but:
-→ Converting logs into structured issue records
-→ Accumulating resolution history
-→ Reusing past solutions for similar issues
+→ Converting logs into structured **issue** records  
+→ Accumulating resolution history  
+→ Reusing past solutions for similar issues  
+
+*(Documentation uses **Issue**. Older drafts may say “incident”; the codebase uses Issue.)*
 
 ---
 
 ## 2. Core Concept
 
 ```
-Log → Analysis → Issue → Resolution → Storage → Reuse
+Log → (optional) AI Analysis → Issue → Resolution → Storage → Reuse
 ```
 
-* Logs are raw input
-* AI provides initial analysis
-* User resolves the issue
-* Finalized issue becomes reusable data
+* Logs are raw input  
+* AI analysis is **optional** and **not** tied to creating an issue (see API flow below)  
+* User resolves the issue and stores resolution  
+* Finalized issue becomes reusable data  
 
 ---
 
 ## 3. Tech Stack
 
-* Backend: Spring Boot (Java)
-* Database: MySQL
-* AI: OpenAI API (or similar)
-* (Future) Vector DB: Pinecone
+* Backend: Spring Boot 3.x (Java 17)  
+* Persistence: Spring Data JPA, MySQL  
+* View: Thymeleaf, Bootstrap 5, minimal vanilla JS (`fetch`)  
+* AI: OpenAI API (`OPENAI_API_KEY`, model configurable in `application.yml`)  
+* (Future) Vector DB: Pinecone / RAG  
 
 ---
 
@@ -37,38 +40,32 @@ Log → Analysis → Issue → Resolution → Storage → Reuse
 
 ### 4.1 Project Management (Minimal)
 
-* Create Project
-* Select Project
+* Create project  
+* List projects and open project detail  
 
-### 4.2 Log Analysis
+### 4.2 Log Analysis (AI)
 
-* Input: raw log text
-* AI analyzes:
-
-  * summary
-  * suspected cause
-  * key evidence
-  * recommended actions
+* Input: raw log text  
+* Output (structured): summary, estimated root cause, recommendation, **severity** (LOW / MEDIUM / HIGH / CRITICAL), confidence  
+* **Temporary analysis** (`POST /api/analysis`): not persisted  
+* **Persist analysis** on an existing issue: `POST /api/analysis/issues/{issueId}` (re-runs analysis from stored raw log, upserts `IssueAnalysis`)  
 
 ### 4.3 Issue Creation
 
-* User clicks "Save Report"
-* Inputs:
-
-  * actual cause
-  * action taken
+* User saves an issue after (optionally) running analysis on the client  
+* Required: project, **title**, **raw log**  
+* Optional: attach last analysis result in the same request → creates `IssueAnalysis` row  
+* If no analysis payload: issue exists **without** analysis (1 : 0..1)  
 
 ### 4.4 Issue Storage
 
-* Store:
-
-  * raw log
-  * AI analysis
-  * user resolution
+* **Issue** row: title, raw log, status, timestamps  
+* **IssueAnalysis** (optional): AI fields + severity + confidence  
+* **IssueResolution** (optional until user saves): actual cause, action taken  
 
 ### 4.5 Similar Issue Search (Phase 1)
 
-* Simple keyword search (LIKE / contains)
+* Simple keyword search (LIKE / contains) — not implemented yet  
 
 ---
 
@@ -76,334 +73,252 @@ Log → Analysis → Issue → Resolution → Storage → Reuse
 
 ### 5.1 RAG (Phase 2)
 
-* Store embeddings
-* Use Pinecone
-* Retrieve similar issues by vector similarity
+* Embeddings, Pinecone, similarity retrieval  
 
 ### 5.2 Code Context Integration (Optional)
 
-* Read GitHub or local files
-* Combine logs + code for better analysis
+* GitHub or local files + logs  
 
 ---
 
 ## 6. System Architecture
 
 ```
-Controller
-  ↓
-Service Layer
-  ├── LogParseService
-  ├── AnalysisService (AI)
-  ├── IssueService
-  └── SearchService
-  ↓
-Repository (JPA)
-  ↓
-MySQL
+REST View (Thymeleaf)     REST API (/api/*)
+        \                       /
+         \                     /
+          Controller layer
+                 ↓
+          Service layer
+          ├── AnalysisService (OpenAI)
+          ├── IssueService
+          └── ProjectService
+                 ↓
+          Repository (JPA)
+                 ↓
+               MySQL
 ```
+
+*(SearchService / LogParseService may be added later.)*
 
 ---
 
-## 7. API Design (Basic)
+## 7. API Design (implemented baseline)
+
+Base path for JSON APIs: **`/api/...`**
 
 ### Project
 
-* POST /api/projects
-* GET /api/projects
+* `POST /api/projects` — create  
+* `GET /api/projects` — list  
 
 ### Analysis
 
-* POST /api/analysis
-
-  * input: log text
-  * output: AI analysis result
-
-### Issue
-
-* POST /issues
-* GET /issues?projectId=
-* GET /issues/{id}
-
----
-
-## 8. Data Model
-
-### Project
-
-* id
-* name
-* createdAt
+* `POST /api/analysis` — body: `{ "rawLog": "..." }`  
+  * Returns structured result **without** persisting any issue or analysis row  
+* `POST /api/analysis/issues/{issueId}` — loads issue’s stored raw log, runs AI, **upserts** `IssueAnalysis`  
 
 ### Issue
 
-* id
-* projectId
-* summary
-* status (OPEN / RESOLVED)
-* createdAt
-
-### IssueLog
-
-* id
-* issueId
-* rawLog
-
-### IssueAnalysis
-
-* id
-* issueId
-* summary
-* rootCause
-* recommendation
-* confidence
-
-### IssueResolution
-
-* id
-* issueId
-* actualCause
-* actionTaken
-* createdAt
+* `POST /api/issues` — create issue; optional `analysis` in body → persist analysis if present  
+* `GET /api/issues` — query: `projectId` (optional), `unresolvedOnly` (optional, default false)  
+* `GET /api/issues/{id}` — detail (includes nested analysis/resolution when present)  
+* `PATCH /api/issues/{id}/status` — body: `{ "status": "UNRESOLVED" | "RESOLVED" }`  
+* `PATCH /api/issues/{id}` — update title / raw log  
+* `POST /api/issues/{id}/resolution` — body: actual cause + action taken; creates or updates resolution; sets status **RESOLVED**  
 
 ---
 
-## 9. UI Flow
+## 8. Data Model (as implemented)
+
+Naming: **UPPER_SNAKE** table and column names in DB; JPA maps explicitly.
+
+### Project (`PROJECT`)
+
+* `ID`  
+* `NAME`  
+* `CREATED_AT`  
+
+### Issue (`ISSUE`)
+
+* `ID`  
+* `PROJECT_ID` (FK → Project)  
+* `RAW_LOG` (TEXT) — stored on the issue row (**no separate IssueLog table**)  
+* `TITLE` (string; plan’s “one-line summary” for the issue)  
+* `STATUS` — `UNRESOLVED` | `RESOLVED`  
+* `CREATED_AT`  
+
+### IssueAnalysis (`ISSUE_ANALYSIS`) — optional 1 : 1
+
+* `ID`  
+* `ISSUE_ID` (unique FK)  
+* `SUMMARY`, `ROOT_CAUSE`, `RECOMMENDATION`  
+* `SEVERITY` — enum: LOW, MEDIUM, HIGH, CRITICAL  
+* `CONFIDENCE`  
+
+### IssueResolution (`ISSUE_RESOLUTION`) — optional 1 : 1
+
+* `ID`  
+* `ISSUE_ID` (unique FK)  
+* `ACTUAL_CAUSE`  
+* `ACTION_TAKEN`  
+* `CREATED_AT`  
+
+---
+
+## 9. Analysis vs Issue Save (product flow)
+
+1. User submits raw log to **`POST /api/analysis`** → backend returns JSON only (no DB write for analysis).  
+2. Frontend keeps that result in memory (optional).  
+3. User clicks **save issue** → **`POST /api/issues`** with title, rawLog, optional `analysis` object.  
+4. Backend creates **Issue** always; creates **IssueAnalysis** only if `analysis` is present.  
+
+Reason: issue can exist without AI data; analysis is auxiliary.
+
+---
+
+## 10. UI Flow
 
 ```
-[Project Selection]
+[Project list / create]
     ↓
-[Log Input]
+[Project detail: log input → Analyze → optional save issue]
     ↓
-[AI Analysis Result (Structured View)]
-    ↓
-[Save Report Button]
-    ↓
-[User Inputs Resolution]
-    ↓
-[Final issue Stored]
+[Issue detail: log, analysis, resolution, status]
 ```
 
 ---
 
-## 10. UI Principle
+## 11. UI Principle
 
-* NOT chat-based
-* Structured report UI
-* Focus on history and records
-
----
-
-## 11. AI Responsibility
-
-### AI does:
-
-* Analyze logs
-* Suggest possible causes
-* Structure final report
-
-### AI does NOT:
-
-* Auto-learn
-* Modify system behavior
+* Not chat-based  
+* Structured, admin-style report UI  
+* Focus on history and records  
+* Primary copy: **Korean** for end-user labels; technical/API identifiers stay English where useful  
 
 ---
 
-## 12. Key Differentiation
+## 12. AI Responsibility
 
-* Not just log analysis
-* Issue-based lifecycle system
-* Knowledge accumulation
-* Reusable debugging history
+### AI does
 
----
+* Analyze logs  
+* Suggest causes and structured fields (including severity)  
 
-## 13. Development Priority
+### AI does not
 
-### Step 1 (Must)
-
-* Project + Issue CRUD
-* Log input
-* AI analysis
-
-### Step 2
-
-* Resolution input
-* Issue list UI
-
-### Step 3
-
-* Simple search (LIKE)
-
-### Step 4 (Optional)
-
-* RAG (Pinecone)
+* Auto-learn or change runtime behavior without explicit user actions  
 
 ---
 
-## 14. Definition of Done (MVP)
+## 13. Key Differentiation
 
-* User can input logs
-* AI returns structured analysis
-* User can save issue
-* Issue list is viewable per project
-* Past issues can be searched (basic)
+* Issue lifecycle, not one-off log paste  
+* Optional AI layer on top of durable records  
+* Resolution history as knowledge  
+
+---
+
+## 14. Development Priority (updated)
+
+1. Database connection and schema aligned with JPA (`validate`)  
+2. Entities: Project, Issue, IssueAnalysis, IssueResolution  
+3. Thymeleaf pages (dashboard, project detail, issue detail)  
+4. Project + Issue REST + basic SSR  
+5. `POST /api/analysis` (non-persisted) + OpenAI wiring  
+6. Issue create with optional persisted analysis  
+7. Resolution API + issue detail UX  
+8. Similar issue search (LIKE)  
+9. RAG / Pinecone (future)  
+
+---
+
+## 15. Definition of Done (MVP)
+
+* User can paste logs and get structured AI output  
+* User can save an issue with or without analysis  
+* Issue list per project with optional “unresolved only” filter  
+* User can mark resolved and store resolution text  
+* (Stretch) basic keyword search across stored issues  
 
 ---
 
 # UI / View Architecture
 
-## Frontend Strategy
+## Frontend strategy
 
-This project uses Server-Side Rendering (SSR) with Thymeleaf.
-
-Reason:
-- Faster MVP development
-- Simple admin-style UI
-- Tight integration with Spring Boot
-- Easier backend-focused portfolio development
-
-Tech Stack:
-- Thymeleaf
-- Bootstrap 5
-- Vanilla JavaScript (minimal usage)
+* SSR with **Thymeleaf**  
+* **Bootstrap 5**, minimal **vanilla JS** (`fetch` for analysis, issue save, status, resolution)  
+* No full SPA  
 
 ---
 
-# Page Structure
+## Page structure
 
-## 1. Dashboard Page
+### 1. Dashboard
 
-URL:
-- `/`
-- `/projects`
+* URLs: `/`, `/projects`  
+* Template: `dashboard.html`  
+* Project table, create project (fetch → `POST /api/projects`)  
 
-Purpose:
-- Show project list
-- Create new project
-- Navigate to project detail page
+### 2. Project detail
 
-UI Components:
-- Project table
-- Create project button
-- Search input (optional)
+* URL: `/projects/{projectId}`  
+* Template: `project-detail.html`  
+* Left: raw log, title, analyze button, save issue  
+* Right: recent issues (newest first), optional “unresolved only” filter  
+* Analyze: `POST /api/analysis`; save issue: `POST /api/issues` including optional `analysis` from memory  
 
----
+### 3. AI analysis result (on project detail)
 
-## 2. Project Detail Page
+* Card block: summary, root cause, recommendation, severity, similar issues (placeholder until search exists)  
 
-URL:
-- `/projects/{projectId}`
+### 4. Save issue (on project detail)
 
-Purpose:
-- Analyze logs for a selected project
-- View issue history
+* Fields aligned with API: **title**, **raw log**; analysis object sent only if user ran analysis  
 
-Layout:
-- Left: log input form
-- Right: recent issue list
+### 5. Issue detail
 
-UI Components:
-- Large textarea for log input
-- Analyze button
-- Issue summary cards
+* URL: `/issues/{issueId}`  
+* Template: **`issue-detail.html`** *(not `incident-detail`)*  
+* Sections: original log, AI analysis (if any), resolution form, status controls  
 
 ---
 
-## 3. AI Analysis Result Section
+## UI design rules
 
-Displayed after log analysis.
-
-Fields:
-- Summary
-- Estimated Root Cause
-- Recommended Action
-- Similar Past issues
-
-UI Style:
-- Card-based layout
-- Highlight severity level
+* Bootstrap grid, simple admin look  
+* Prefer readability over decoration  
+* Tables + cards; responsive when easy  
 
 ---
 
-## 4. Save issue Modal/Form
+## Rendering strategy
 
-Purpose:
-- Save resolved issue knowledge
+Templates under `src/main/resources/templates/`:
 
-Fields:
-- Title
-- Log content
-- Root cause
-- Resolution
-- Memo
+* `layout.html`  
+* `dashboard.html`  
+* `project-detail.html`  
+* `issue-detail.html`  
 
----
-
-## 5. issue Detail Page
-
-URL:
-- `/issues/{issueId}`
-
-Purpose:
-- Show full issue report
-
-Sections:
-- Original log
-- AI analysis result
-- Final resolution
-- Similar issues
+`ViewController` returns view names; model attributes populated server-side.
 
 ---
 
-# UI Design Rules
+## API usage from the browser
 
-- Use Bootstrap grid layout
-- Use simple admin dashboard style
-- Avoid overly modern or animated UI
-- Prioritize readability
-- Use tables and cards
-- Responsive layout preferred
+* SSR for initial HTML  
+* `fetch` for: analysis, issue create, status patch, resolution post, content updates as needed  
 
 ---
 
-# Rendering Strategy
+## Appendix: naming cheat sheet
 
-Use Thymeleaf templates:
-- layout.html
-- dashboard.html
-- project-detail.html
-- issue-detail.html
-
-Use Controller + Model pattern.
-
-Example:
-- Controller returns Thymeleaf view
-- Backend directly injects model data into template
-
----
-
-# API Usage
-
-Most pages use SSR rendering.
-
-Use fetch API only for:
-- AI analyze request
-- Issue save request
-- Async updates
-
-Do NOT build a full SPA frontend.
-
----
-
-# Development Priority
-
-1. Database connection
-2. Entity structure
-3. Basic Thymeleaf pages
-4. Project CRUD
-5. Issue CRUD
-6. Mock AI analysis
-7. OpenAI integration
-8. Similar issue search
-9. RAG/Pinecone upgrade (future)
+| Concept in prose | API / field name |
+|------------------|------------------|
+| One-line issue headline | `title` |
+| Raw log text | `rawLog` |
+| Not yet fixed | `UNRESOLVED` |
+| Fixed | `RESOLVED` |
+| Old doc “Incident” | **Issue** |

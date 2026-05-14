@@ -1,0 +1,27 @@
+# Commit Message Convention
+
+Use conventional commit style.
+
+Format:
+
+type: short summary
+
+- change summary 1
+- change summary 2
+
+Rules:
+- Keep summaries concise
+- Use practical wording
+- Use lowercase commit types
+- Use bullet points for details
+- Avoid emojis
+- Avoid overly verbose explanations
+
+Allowed types:
+- feat
+- fix
+- refactor
+- style
+- chore
+- docs
+- test
