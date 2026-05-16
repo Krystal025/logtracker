@@ -301,6 +301,23 @@
     margin-top: 1rem;
 }
 
+.card-head .text-muted,
+.card-body-pro .text-muted {
+    color: #b0bcc8 !important;
+}
+
+#analysisSimilar a,
+#analysisSimilar a:visited {
+    color: #a78bfa;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color .15s ease;
+}
+
+#analysisSimilar a:hover {
+    color: #c4b5fd;
+}
+
 .plain-nav-link {
     display: inline-flex;
     align-items: center;

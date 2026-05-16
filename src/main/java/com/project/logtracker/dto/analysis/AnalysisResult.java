@@ -20,4 +20,8 @@ public record AnalysisResult(
     ) {
         return new AnalysisResult(summary, rootCause, recommendation, severity, confidence, null);
     }
+
+    public AnalysisResult withSimilarIssues(List<SimilarIssue> similarIssues) {
+        return new AnalysisResult(summary, rootCause, recommendation, severity, confidence, similarIssues);
+    }
 }

@@ -1,5 +1,7 @@
 package com.project.logtracker.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.logtracker.dto.analysis.AnalysisResult;
 import com.project.logtracker.dto.issue.IssueCreateRequest;
 import com.project.logtracker.dto.issue.IssueResponse;
@@ -34,6 +36,7 @@ public class IssueService {
     private final ProjectRepository projectRepository;
     private final EmbeddingService embeddingService;
     private final VectorStoreService vectorStoreService;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public IssueResponse create(IssueCreateRequest request) {
@@ -160,6 +163,8 @@ public class IssueService {
         double confidence = analysisResult.confidence() == null ? 0.0 : analysisResult.confidence();
         IssueSeverity severity = analysisResult.severity() == null
                 ? IssueSeverity.MEDIUM : analysisResult.severity();
+        String similarIssuesJson = serializeSimilarIssues(analysisResult);
+
         IssueAnalysis issueAnalysis = issueAnalysisRepository.findByIssueId(issue.getId())
                 .map(existingAnalysis -> {
                     existingAnalysis.update(
@@ -167,7 +172,8 @@ public class IssueService {
                             analysisResult.rootCause(),
                             analysisResult.recommendation(),
                             severity,
-                            confidence
+                            confidence,
+                            similarIssuesJson
                     );
                     return existingAnalysis;
                 })
@@ -177,10 +183,23 @@ public class IssueService {
                         analysisResult.rootCause(),
                         analysisResult.recommendation(),
                         severity,
-                        confidence
+                        confidence,
+                        similarIssuesJson
                 ));
 
         issueAnalysisRepository.save(issueAnalysis);
         issue.attachAnalysis(issueAnalysis);
+    }
+
+    private String serializeSimilarIssues(AnalysisResult analysisResult) {
+        if (analysisResult.similarIssues() == null || analysisResult.similarIssues().isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(analysisResult.similarIssues());
+        } catch (JsonProcessingException e) {
+            log.warn("[IssueService] similarIssues 직렬화 실패", e);
+            return null;
+        }
     }
 }

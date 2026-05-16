@@ -117,6 +117,19 @@
                                 <span class="section-label">요약</span>
                                 <p id="analysisSummary" class="mb-0" th:text="${issue.analysis != null ? issue.analysis.summary : '-'}">-</p>
                             </div>
+                            <div class="detail-block">
+                                <span class="section-label">유사 이슈</span>
+                                <div id="analysisSimilar">
+                                    <th:block th:if="${issue.analysis != null && issue.analysis.similarIssues != null && !#lists.isEmpty(issue.analysis.similarIssues)}">
+                                        <a th:each="s : ${issue.analysis.similarIssues}"
+                                           th:href="@{/issues/{id}(id=${s.issueId})}"
+                                           class="d-block mb-1"
+                                           th:text="${s.title}">제목</a>
+                                    </th:block>
+                                    <span th:if="${issue.analysis == null || issue.analysis.similarIssues == null || #lists.isEmpty(issue.analysis.similarIssues)}"
+                                          class="text-muted">-</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -165,15 +178,6 @@
                 </section>
 
                 <aside class="sticky-panel d-grid gap-4">
-                    <div class="glass-card">
-                        <div class="card-head">
-                            <div class="section-title">Similar issues</div>
-                            <span class="badge-pro ai">RAG</span>
-                        </div>
-                        <div class="card-body-pro">
-                            <p id="similarIssues" class="mb-0 text-muted small">AI 분석 실행 시 유사 이슈가 표시됩니다.</p>
-                        </div>
-                    </div>
                     <div class="glass-card">
                         <div class="card-head">
                             <div class="section-title">Incident metadata</div>
@@ -264,17 +268,14 @@
     }
 
     function renderSimilarIssues(similarIssues) {
-        const container = document.getElementById('similarIssues');
+        const container = document.getElementById('analysisSimilar');
         if (!similarIssues || similarIssues.length === 0) {
-            container.innerHTML = '<span class="text-muted small">유사한 과거 이슈가 없습니다.</span>';
+            container.innerHTML = '<span class="text-muted">-</span>';
             return;
         }
-        container.innerHTML = similarIssues.map(s => `
-            <a href="/issues/${s.issueId}" class="d-block mb-2">
-                <div class="section-title">${s.title}</div>
-                ${s.actualCause ? `<div class="text-muted small mt-1">${s.actualCause}</div>` : ''}
-            </a>
-        `).join('');
+        container.innerHTML = similarIssues.map(s =>
+            `<a href="/issues/${s.issueId}" class="d-block mb-1">${s.title}</a>`
+        ).join('');
     }
 
     function showAnalysisMessage(message, loading, autoHide) {

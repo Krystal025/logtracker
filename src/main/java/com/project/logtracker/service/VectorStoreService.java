@@ -39,7 +39,7 @@ public class VectorStoreService {
         }
     }
 
-    public List<Long> search(List<Float> vector, int topK, Long projectId) {
+    public List<VectorMatch> search(List<Float> vector, int topK, Long projectId) {
         Struct filter = Struct.newBuilder()
                 .putFields("projectId", Value.newBuilder()
                         .setStructValue(Struct.newBuilder()
@@ -54,14 +54,14 @@ public class VectorStoreService {
                 topK, vector, null, null, null, null, filter, false, true
         );
 
-        List<Long> issueIds = new ArrayList<>();
+        List<VectorMatch> matches = new ArrayList<>();
         for (ScoredVectorWithUnsignedIndices match : response.getMatchesList()) {
             try {
-                issueIds.add(Long.parseLong(match.getId()));
+                matches.add(new VectorMatch(Long.parseLong(match.getId()), match.getScore()));
             } catch (NumberFormatException ignored) {
             }
         }
-        return issueIds;
+        return matches;
     }
 
     public void delete(Long issueId) {

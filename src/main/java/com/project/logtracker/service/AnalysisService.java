@@ -38,19 +38,26 @@ public class AnalysisService {
         return callOpenAi(rawLog, similarIssues);
     }
 
+    private static final int SEARCH_CANDIDATE_SIZE = 10;
+    private static final int MAX_SIMILAR_ISSUES = 3;
+    private static final float SIMILARITY_THRESHOLD = 0.50f;
+
     private List<SimilarIssue> findSimilarIssues(String rawLog, Long projectId) {
         List<Float> vector = embeddingService.embed(rawLog);
-        List<Long> candidateIds = vectorStoreService.search(vector, 3, projectId);
+        List<VectorMatch> candidates = vectorStoreService.search(vector, SEARCH_CANDIDATE_SIZE, projectId);
 
-        return candidateIds.stream()
-                .flatMap(id -> {
+        return candidates.stream()
+                .filter(match -> match.score() >= SIMILARITY_THRESHOLD)
+                .sorted((a, b) -> Float.compare(b.score(), a.score()))
+                .flatMap(match -> {
                     try {
-                        IssueResponse issue = issueService.getById(id);
+                        IssueResponse issue = issueService.getById(match.issueId());
                         return java.util.stream.Stream.of(toSimilarIssue(issue));
                     } catch (Exception ignored) {
                         return java.util.stream.Stream.empty();
                     }
                 })
+                .limit(MAX_SIMILAR_ISSUES)
                 .toList();
     }
 

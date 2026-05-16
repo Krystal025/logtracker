@@ -1,11 +1,15 @@
 package com.project.logtracker.dto.issue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.logtracker.dto.analysis.AnalysisResult;
+import com.project.logtracker.dto.analysis.SimilarIssue;
 import com.project.logtracker.entity.Issue;
 import com.project.logtracker.entity.IssueAnalysis;
 import com.project.logtracker.entity.IssueStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record IssueResponse(
         Long id,
@@ -17,6 +21,8 @@ public record IssueResponse(
         IssueStatus status,
         LocalDateTime createdAt
 ) {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     public static IssueResponse from(Issue issue) {
         return new IssueResponse(
                 issue.getId(),
@@ -40,6 +46,17 @@ public record IssueResponse(
                 analysis.getRecommendation(),
                 analysis.getSeverity(),
                 analysis.getConfidence()
-        );
+        ).withSimilarIssues(parseSimilarIssues(analysis.getSimilarIssues()));
+    }
+
+    private static List<SimilarIssue> parseSimilarIssues(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return MAPPER.readValue(json, new TypeReference<List<SimilarIssue>>() {});
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

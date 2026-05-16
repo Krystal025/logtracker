@@ -46,13 +46,17 @@ public class IssueAnalysis {
     @Column(name = "CONFIDENCE", nullable = false)
     private Double confidence;
 
+    @Column(name = "SIMILAR_ISSUES", columnDefinition = "TEXT")
+    private String similarIssues;
+
     public IssueAnalysis(
             Issue issue,
             String summary,
             String rootCause,
             String recommendation,
             IssueSeverity severity,
-            Double confidence
+            Double confidence,
+            String similarIssues
     ) {
         this.issue = issue;
         this.summary = summary;
@@ -60,13 +64,16 @@ public class IssueAnalysis {
         this.recommendation = recommendation;
         this.severity = severity;
         this.confidence = confidence;
+        this.similarIssues = similarIssues;
     }
 
-    public void update(String summary, String rootCause, String recommendation, IssueSeverity severity, Double confidence) {
+    public void update(String summary, String rootCause, String recommendation,
+                       IssueSeverity severity, Double confidence, String similarIssues) {
         this.summary = summary;
         this.rootCause = rootCause;
         this.recommendation = recommendation;
         this.severity = severity;
         this.confidence = confidence;
+        this.similarIssues = similarIssues;
     }
 }
