@@ -6,6 +6,9 @@ import jakarta.validation.constraints.Size;
 public record ProjectCreateRequest(
         @NotBlank(message = "Project name is required")
         @Size(max = 100, message = "Project name must be 100 characters or fewer")
-        String name
+        String name,
+
+        @Size(max = 500, message = "Description must be 500 characters or fewer")
+        String description
 ) {
 }

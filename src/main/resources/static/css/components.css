@@ -251,8 +251,11 @@
 }
 
 .issue-status-toggle.unresolved.active {
-    background: var(--danger-soft);
-    color: #fff;
+    border-color: rgba(251, 113, 133, .72);
+    background: rgba(251, 113, 133, .22);
+    color: #fda4af;
+    box-shadow: 0 0 0 2px rgba(251, 113, 133, .18);
+    font-weight: 800;
 }
 
 .issue-status-toggle.resolved {
@@ -261,8 +264,11 @@
 }
 
 .issue-status-toggle.resolved.active {
-    background: var(--success-soft);
-    color: #fff;
+    border-color: rgba(52, 211, 153, .72);
+    background: rgba(52, 211, 153, .18);
+    color: #6ee7b7;
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, .16);
+    font-weight: 800;
 }
 
 .log-viewer {
@@ -304,6 +310,21 @@
 .card-head .text-muted,
 .card-body-pro .text-muted {
     color: #b0bcc8 !important;
+}
+
+.card-head > div > .text-muted {
+    margin-top: .45rem;
+}
+
+.issue-row .d-flex.gap-2 {
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.issue-row .badge-pro {
+    min-width: 90px;
+    justify-content: center;
+    text-align: center;
 }
 
 #analysisSimilar a,

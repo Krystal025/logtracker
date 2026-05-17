@@ -2,14 +2,20 @@ package com.project.logtracker.dto.project;
 
 import com.project.logtracker.entity.Project;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 public record ProjectResponse(
         Long id,
         String name,
-        LocalDateTime createdAt
+        String description,
+        LocalDate createdAt
 ) {
     public static ProjectResponse from(Project project) {
-        return new ProjectResponse(project.getId(), project.getName(), project.getCreatedAt());
+        return new ProjectResponse(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getCreatedAt().toLocalDate()
+        );
     }
 }

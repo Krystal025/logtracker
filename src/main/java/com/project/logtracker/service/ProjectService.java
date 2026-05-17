@@ -20,7 +20,7 @@ public class ProjectService {
 
     @Transactional
     public ProjectResponse create(ProjectCreateRequest request) {
-        Project project = new Project(request.name());
+        Project project = new Project(request.name(), request.description());
         Project savedProject = projectRepository.save(project);
         return ProjectResponse.from(savedProject);
     }

@@ -12,25 +12,24 @@
             </div>
         </div>
         <nav class="sidebar-nav">
-            <a class="sidebar-link" href="/projects"><span class="sidebar-dot"></span>Dashboard</a>
-            <a class="sidebar-link active" href="#"><span class="sidebar-dot"></span>Log Analysis</a>
-            <a class="sidebar-link" href="#issueList"><span class="sidebar-dot"></span>Issues</a>
+            <a class="sidebar-link" href="/projects"><span class="sidebar-dot"></span>대시보드</a>
+            <a class="sidebar-link active" th:href="@{/projects/{id}(id=${project.id})}"><span class="sidebar-dot"></span>로그 분석</a>
+            <a class="sidebar-link disabled" href="#"><span class="sidebar-dot"></span>이슈 상세</a>
         </nav>
-        <div class="sidebar-meta">Project-scoped analysis keeps investigations tied to the service that produced the logs.</div>
     </aside>
 
     <div class="app-main">
         <header class="app-topbar">
             <a class="plain-nav-link" href="/projects">&larr; Projects</a>
-            <span class="topbar-pill">Live triage workspace</span>
         </header>
 
         <main class="app-content fade-in">
             <div class="page-header">
                 <div>
-                    <div class="page-kicker">Log analysis</div>
+                    <div class="page-kicker">Project</div>
                     <h1 class="page-title" th:text="${project.name}">Project Name</h1>
-                    <p class="page-description mb-0">Analyze raw logs, save issues, and build a resolution knowledge base.</p>
+                    <p class="page-description mb-0"
+                       th:text="${project.description != null && !#strings.isEmpty(project.description) ? project.description : ''}"></p>
                 </div>
             </div>
 
@@ -39,8 +38,8 @@
                     <div class="glass-card">
                         <div class="card-head">
                             <div>
-                                <div class="section-title">Log stream</div>
-                                <div class="text-muted small">Paste a production log or stack trace for AI-assisted triage.</div>
+                                <div class="section-title">Log Analysis</div>
+                                <div class="text-muted small">로그 또는 스택 트레이스를 붙여넣어 유사 사례, 예상 원인, 해결 방향을 AI로 분석해보세요.</div>
                             </div>
                         </div>
                         <div class="card-body-pro">
@@ -54,9 +53,9 @@
                                 </div>
 
                                 <div class="col-12">
-                                    <label class="form-label" for="titleInput">Issue title</label>
+                                    <label class="form-label" for="titleInput">Issue Title</label>
                                     <input id="titleInput" class="form-control" maxlength="1000"
-                                           placeholder="예: 결제 승인 요청 중 응답 지연 발생" required>
+                                           placeholder="ex. 결제 승인 요청 중 응답 지연 발생" required>
                                 </div>
 
                                 <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
@@ -76,7 +75,7 @@
                         <div class="card-head">
                             <div>
                                 <div class="section-title">AI Insight</div>
-                                <div class="text-muted small">Structured diagnosis generated from the current log.</div>
+                                <div class="text-muted small">현재 로그에 대한 AI 분석 결과입니다.</div>
                             </div>
                         </div>
                         <div class="card-body-pro">
@@ -110,13 +109,13 @@
                     <div class="glass-card">
                         <div class="card-head">
                             <div>
-                                <div class="section-title">Issue Tracker</div>
-                                <div class="text-muted small">Stored issues for this project.</div>
+                                <div class="section-title">Issue List</div>
+                                <div class="text-muted small">이 프로젝트의 저장된 이슈 목록입니다.</div>
                             </div>
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" role="switch" id="unresolvedOnlySwitch"
+                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-2">
+                                <input class="form-check-input mt-0" type="checkbox" role="switch" id="unresolvedOnlySwitch"
                                        name="unresolvedOnly" value="true" th:checked="${unresolvedOnly}">
-                                <label class="form-check-label small text-muted" for="unresolvedOnlySwitch">Unresolved only</label>
+                                <label class="form-check-label small text-muted mb-0" for="unresolvedOnlySwitch">Unresolved only</label>
                             </div>
                         </div>
                         <div id="issueList" class="card-body-pro d-grid gap-3">

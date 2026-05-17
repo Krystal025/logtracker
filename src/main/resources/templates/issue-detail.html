@@ -16,21 +16,18 @@
             <a class="sidebar-link" th:href="@{/projects/{id}(id=${issue.projectId})}"><span class="sidebar-dot"></span>Log Analysis</a>
             <a class="sidebar-link active" href="#"><span class="sidebar-dot"></span>Issue Detail</a>
         </nav>
-        <div class="sidebar-meta">Resolved issues become the source material for future similar-incident recommendations.</div>
     </aside>
 
     <div class="app-main">
         <header class="app-topbar">
             <a class="plain-nav-link" th:href="@{/projects/{id}(id=${issue.projectId})}">&larr; Project</a>
-            <span class="topbar-pill">Incident investigation</span>
         </header>
 
         <main class="app-content fade-in">
             <div class="page-header">
                 <div>
-                    <div class="page-kicker">Issue detail</div>
+                    <div class="page-kicker">Issue</div>
                     <h1 id="issueTitleHeading" class="page-title" th:text="${issue.title}">이슈 제목</h1>
-                    <p class="page-description mb-0">Review the source log, AI root cause analysis, and final resolution.</p>
                 </div>
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div class="btn-group btn-group-sm" role="group" aria-label="이슈 상태">
@@ -52,8 +49,8 @@
                     <div class="glass-card">
                         <div class="card-head">
                             <div>
-                                <div class="section-title">Related logs</div>
-                                <div class="text-muted small">Original log attached to this issue.</div>
+                                <div class="section-title">Issue Detail</div>
+                                <div class="text-muted small">이슈에 첨부된 원본 로그입니다.</div>
                             </div>
                             <button id="editToggleButton" class="btn btn-sm btn-outline-primary" type="button" onclick="enableIssueEdit()">Edit</button>
                         </div>
@@ -84,7 +81,7 @@
                         <div class="card-head">
                             <div>
                                 <div class="section-title">AI Insight</div>
-                                <div class="text-muted small">Generated analysis for the selected log.</div>
+                                <div class="text-muted small">선택된 로그에 대한 AI 분석 결과입니다.</div>
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 <span id="analysisMessage" class="status-message small d-none">
@@ -136,8 +133,8 @@
                     <div class="glass-card">
                         <div class="card-head">
                             <div>
-                                <div class="section-title">Final resolution</div>
-                                <div class="text-muted small">Human-confirmed cause and action taken.</div>
+                                <div class="section-title">Final Resolution</div>
+                                <div class="text-muted small">해결 완료 후 실제 원인과 적용한 해결 방안을 기록하세요.</div>
                             </div>
                             <button id="resolutionEditButton" class="btn btn-sm btn-outline-primary" type="button"
                                     th:classappend="${issue.resolution == null} ? ' d-none' : ''"
@@ -178,21 +175,6 @@
                 </section>
 
                 <aside class="sticky-panel d-grid gap-4">
-                    <div class="glass-card">
-                        <div class="card-head">
-                            <div class="section-title">Incident metadata</div>
-                        </div>
-                        <div class="card-body-pro d-grid gap-3">
-                            <span class="badge-pro ai" th:if="${issue.analysis != null}">AI generated</span>
-                            <span class="badge-pro"
-                                  th:if="${issue.analysis != null && issue.analysis.severity != null}"
-                                  th:classappend="${' severity-' + #strings.toLowerCase(issue.analysis.severity.name())}"
-                                  th:text="${issue.analysis.severity.name()}">MEDIUM</span>
-                            <span class="badge-pro" th:classappend="${issue.status.name() == 'RESOLVED'} ? ' resolved' : ' unresolved'"
-                                  th:text="${issue.status.name() == 'RESOLVED' ? 'Resolved' : 'Unresolved'}">Unresolved</span>
-                            <span class="badge-pro">Project ID <span th:text="${issue.projectId}">1</span></span>
-                        </div>
-                    </div>
                 </aside>
             </div>
         </main>

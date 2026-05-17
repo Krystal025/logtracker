@@ -96,6 +96,12 @@ body.bg-light {
     transform: translateX(2px);
 }
 
+.sidebar-link.disabled {
+    opacity: .32;
+    pointer-events: none;
+    cursor: default;
+}
+
 .sidebar-dot {
     width: 8px;
     height: 8px;
@@ -163,6 +169,15 @@ body.bg-light {
     display: grid;
     grid-template-columns: minmax(0, 1.25fr) minmax(340px, .75fr);
     gap: 1.25rem;
+}
+
+.dashboard-grid {
+    align-items: start;
+}
+
+.scrollable-panel {
+    max-height: 560px;
+    overflow-y: auto;
 }
 
 .detail-grid {

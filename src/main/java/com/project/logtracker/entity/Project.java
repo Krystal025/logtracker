@@ -27,11 +27,15 @@ public class Project {
     @Column(name = "NAME", nullable = false, length = 100)
     private String name;
 
+    @Column(name = "DESCRIPTION", length = 500)
+    private String description;
+
     @Column(name = "CREATED_AT", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public Project(String name) {
+    public Project(String name, String description) {
         this.name = name;
+        this.description = description;
     }
 
     @PrePersist
