@@ -2,8 +2,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3308/logtracker
-    username: logtracker_be
-    password: sujeong88*
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -24,4 +24,4 @@ openai:
 
 pinecone:
   api-key: ${PINECONE_API_KEY}
-  index-name: ${PINECONE_INDEX_NAME:logtracker-issues}
+  index-name: ${PINECONE_INDEX_NAME}
